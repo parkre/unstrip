@@ -24,8 +24,9 @@ def get_symbols():
         sym = {}
         if (sym_index > -1):
             sym['name'] = memstr[sym_index+10:-3]
-            sym['begin'] = int(memstr[18:26], 16)
-            sym['end'] = int(memstr[28:36], 16)
+            part = memstr[18:].partition(',')
+            sym['begin'] = int(part[0], 16)
+            sym['end'] = int(part[2][1:].partition(')')[0], 16)
             sym['length'] = int(sym['end'] - sym['begin'] + 1)
             syms.append(sym)
             #print "Name: %s, Begin: %d, End: %d" % (sym['name'], sym['begin'], sym['end'])
