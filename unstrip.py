@@ -5,18 +5,22 @@ from sys import argv
 
 
 def scan_sections():
-    sections = proj.sections.values()
+    sections = lib.sections.values()
+    functions = []
     for sym in symbols:
+        func = {}
         for sec in sections:
             if sym['begin'] > sec.beg and sym['end'] < sec.end:
-                #print 'section_begin: %d, function_begin: %d' % (sec.beg, sym['begin'])
-                offset = sym['begin'] - sec.beg
-                sub_data = sec.data[offset : offset + sym['length']]
-                code = ':'.join(x.encode('hex') for x in sub_data)
-                print 'Symbol: %s\n%s\n' % (sym['name'], code)
+                func['name'] = sym['name']
+                func['offset'] = sym['begin'] - sec.beg
+                sub_data = sec.data[func['offset'] : func['offset'] + sym['length']]
+                func['code'] = ':'.join(x.encode('hex') for x in sub_data)
+                functions.append(func)
+                #print 'Symbol: %s\n%s\n' % (sym['name'], func['code'])
+    return functions
 
 def get_symbols():
-    memmap = proj.memmap
+    memmap = lib.memmap
     syms = []
     for mem in memmap:
         memstr = str(mem)
@@ -29,11 +33,19 @@ def get_symbols():
             sym['end'] = int(part[2][1:].partition(')')[0], 16)
             sym['length'] = int(sym['end'] - sym['begin'] + 1)
             syms.append(sym)
-            #print "Name: %s, Begin: %d, End: %d" % (sym['name'], sym['begin'], sym['end'])
     return syms
+
+def find_matches():
+    code = ':'.join(x.encode('hex') for x in stripped.sections['.text'].data)
+    for func in functions:
+        if code.find(func['code']) > -1:
+            print "Found %s" % func['name']
+        
 
 # run 
 filename = argv[1]
-proj = bap.run(filename)
+lib = bap.run('a.out')
 symbols = get_symbols()
-scan_sections()
+functions = scan_sections()
+stripped = bap.run(filename)
+find_matches()
