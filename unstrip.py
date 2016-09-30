@@ -12,6 +12,8 @@ def scan_sections():
         for sec in sections:
             if sym['begin'] > sec.beg and sym['end'] < sec.end:
                 func['name'] = sym['name']
+                func['begin'] = sym['begin']
+                func['length'] = sym['length']
                 func['offset'] = sym['begin'] - sec.beg
                 sub_data = sec.data[func['offset'] : func['offset'] + sym['length']]
                 func['code'] = ':'.join(x.encode('hex') for x in sub_data)
@@ -36,10 +38,13 @@ def get_symbols():
     return syms
 
 def find_matches():
+    text = stripped.sections['.text']
     code = ':'.join(x.encode('hex') for x in stripped.sections['.text'].data)
+    print 'Symbol Table'
     for func in functions:
-        if code.find(func['code']) > -1:
-            print "Found %s" % func['name']
+        index = code.find(func['code'])
+        if index > -1:
+            print "<%s, %s, %d>" % (func['name'], hex(text.beg + index), func['length'])
         
 
 # run 
