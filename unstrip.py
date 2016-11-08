@@ -54,3 +54,4 @@ symbols = get_symbols()
 functions = scan_sections()
 stripped = bap.run(filename)
 find_matches()
+
