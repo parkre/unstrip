@@ -4,7 +4,7 @@
 import bap
 from bap.adt import Visitor   
 from sys import argv
-
+import os
 
 def scan_sections():
     sections = lib.sections.values()
@@ -45,19 +45,26 @@ def find_matches():
     text = stripped.sections['.text']
     code = ':'.join(x.encode('hex') for x in stripped.sections['.text'].data)
     matches = []
+    beg = 0
     print("The beginning of the text section is %d\n" % text.beg)
     for func in functions:
-        index = code.find(func['code'])
+        index = code.find(func['code'], beg)
+#        if index < 0:
+#            index = code.find(func['code'])
         if index > -1:
+            print("Index = %d" % index)
+            beg = index+1
             match = {}
             match['name'] = func['name']
-            match['value'] = hex(text.beg + index)
+            match['value'] = hex(text.beg + index/8)
             match['length'] = func['length']
             match['binding'] = 69
             match['visibility'] = 0
             match['section'] = func['section']
             matches.append(match)
-            symbol_file.write("<%s, %s, %d>\n" % (match['name'], match['value'], match['length']))
+            symbol_file.write("<%s, %s, %s>\n" % (match['name'], match['value'], match['length']))
+#        else:
+#            print("Function %s was not found\n" % func['name'])
     return matches
 
 class SubVisitor(Visitor):
@@ -70,25 +77,35 @@ class SubVisitor(Visitor):
 
 class CallPrinter(Visitor) :
     def enter_Call(self,jmp):
-#        target_addr=jmp.target.value # this is an address of the destination if it is resolved, in general case it is a Bil expression.
         if 'insn' in jmp.attrs:
             symbol_file.write("<%s>\n" % jmp.attrs['insn'])
 
+# initial setup
+
+with  open('test.c', 'w') as fobj:
+    fobj.write('''
+int main()
+{
+    return 0;
+}
+''')
+os.system('gcc -static test.c')
 
 # run 
 filename = argv[1]
 #lib = bap.run('lib_test/lib_abcdef')
-#lib = bap.run('a.out')
-#symbols = get_symbols()
-#functions = scan_sections()
+lib = bap.run('a.out')
+symbols = get_symbols()
+functions = scan_sections()
 stripped = bap.run(filename)
-symbol_file = open("temp3", 'w')
-#entries = find_matches()
+symbol_file = open("temp", 'w')
+entries = find_matches()
 
-#subs = SubVisitor()
-#subs.run(stripped.program)
+subs = SubVisitor()
+subs.run(stripped.program)
 
-#for address in subs.addresses:
-#    symbol_file.write("<%s>\n" % address)
+symbol_file.write("\n\nSubVisitor\n")
+for address in subs.addresses:
+    symbol_file.write("<%s>\n" % address)
 
 CallPrinter().run(stripped.program)
