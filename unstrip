@@ -1,0 +1,94 @@
+#! /usr/bin/env python
+#! /usr/local/lib/python2.7       
+
+import bap
+from bap.adt import Visitor   
+from sys import argv
+
+
+def scan_sections():
+    sections = lib.sections.values()
+    functions = []
+    for sym in symbols:
+        func = {}
+        i = 0
+        for sec in sections:
+            if sym['begin'] > sec.beg and sym['end'] < sec.end:
+                func['name'] = sym['name']
+                func['begin'] = sym['begin']
+                func['length'] = sym['length']
+                func['offset'] = sym['begin'] - sec.beg
+                sub_data = sec.data[func['offset'] : func['offset'] + sym['length']]
+                func['code'] = ':'.join(x.encode('hex') for x in sub_data)
+                func['section'] = i
+                functions.append(func)
+            i = i + 1
+    return functions
+
+def get_symbols():
+    memmap = lib.memmap
+    syms = []
+    for mem in memmap:
+        memstr = str(mem)
+        sym_index = memstr.find('symbol')
+        sym = {}
+        if (sym_index > -1):
+            sym['name'] = memstr[sym_index+10:-3]
+            part = memstr[18:].partition(',')
+            sym['begin'] = int(part[0], 16)
+            sym['end'] = int(part[2][1:].partition(')')[0], 16)
+            sym['length'] = int(sym['end'] - sym['begin'] + 1)
+            syms.append(sym)
+    return syms
+
+def find_matches():
+    text = stripped.sections['.text']
+    code = ':'.join(x.encode('hex') for x in stripped.sections['.text'].data)
+    matches = []
+    print("The beginning of the text section is %d\n" % text.beg)
+    for func in functions:
+        index = code.find(func['code'])
+        if index > -1:
+            match = {}
+            match['name'] = func['name']
+            match['value'] = hex(text.beg + index)
+            match['length'] = func['length']
+            match['binding'] = 69
+            match['visibility'] = 0
+            match['section'] = func['section']
+            matches.append(match)
+            symbol_file.write("<%s, %s, %d>\n" % (match['name'], match['value'], match['length']))
+    return matches
+
+class SubVisitor(Visitor):
+    def __init__(self):
+        self.addresses = {}
+
+    def enter_Sub(self,sub):
+        self.addresses[sub.id] = sub.attrs['address']
+        #symbol_file.write("<%s, %s, %d>\n" % ())
+
+class CallPrinter(Visitor) :
+    def enter_Call(self,jmp):
+#        target_addr=jmp.target.value # this is an address of the destination if it is resolved, in general case it is a Bil expression.
+        if 'insn' in jmp.attrs:
+            symbol_file.write("<%s>\n" % jmp.attrs['insn'])
+
+
+# run 
+filename = argv[1]
+#lib = bap.run('lib_test/lib_abcdef')
+#lib = bap.run('a.out')
+#symbols = get_symbols()
+#functions = scan_sections()
+stripped = bap.run(filename)
+symbol_file = open("temp3", 'w')
+#entries = find_matches()
+
+#subs = SubVisitor()
+#subs.run(stripped.program)
+
+#for address in subs.addresses:
+#    symbol_file.write("<%s>\n" % address)
+
+CallPrinter().run(stripped.program)
