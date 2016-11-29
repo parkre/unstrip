@@ -11,7 +11,7 @@ int CinjectSyms(char *in, char *syms, char *out_file) {
   FILE *syms_file;
   int ret;
   elfsh_Sym sym;
-  char **name = (char**) malloc(ARR_SIZE * sizeof(char));
+  char **name = (char**) malloc(ARR_SIZE * sizeof(char*));
 
   int tot_syms = 0;
   long int *addr = (long int*) malloc(ARR_SIZE * sizeof(long int));
@@ -78,7 +78,7 @@ int CinjectSyms(char *in, char *syms, char *out_file) {
   printf("injecting symbols...\n");
   /* get the symbol information */
   for(i = 0; i < tot_syms; i++) {
-    sym = elfsh_create_symbol(addr[i], size[i], STT_FUNC, 1, 0, 13);
+    sym = elfsh_create_symbol(addr[i], size[i], STT_FUNC, 1, 0, 6);
     ret = elfsh_insert_symbol(in_file->secthash[ELFSH_SECTION_SYMTAB], &sym, name[i]);
     if(ret < 0) {
       elfsh_error();

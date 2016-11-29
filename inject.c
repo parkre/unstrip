@@ -9,7 +9,7 @@ int main(int argc, char **argv) {
   char *out_file;
   int ret;
   elfsh_Sym sym;
-  char **name = (char**) malloc(ARR_SIZE * sizeof(char));
+  char **name = (char**) malloc(ARR_SIZE * sizeof(char*));
   u_int idx;
 
   int tot_syms = 0;

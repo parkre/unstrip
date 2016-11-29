@@ -2,4 +2,4 @@ import inject, sys
 
 sys.settrace
 
-inject.injectSyms('./hello','./symbols_file','./fakeout')
+inject.injectSyms('./test','./symbols_file','./fakeout')
