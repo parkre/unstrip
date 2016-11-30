@@ -6,61 +6,55 @@ from bap.adt import Visitor
 from sys import argv
 import os
 
-def scan_sections():
-    sections = lib.sections.values()
-    functions = []
-    for sym in symbols:
-        func = {}
-        i = 0
-        for sec in sections:
-            if sym['begin'] > sec.beg and sym['end'] < sec.end:
-                func['name'] = sym['name']
-                func['begin'] = sym['begin']
-                func['length'] = sym['length']
-                func['offset'] = sym['begin'] - sec.beg
-                sub_data = sec.data[func['offset'] : func['offset'] + sym['length']]
-                func['code'] = ':'.join(x.encode('hex') for x in sub_data)
-                func['section'] = i
-                functions.append(func)
-            i = i + 1
-    return functions
 
 def get_symbols():
+    print "Retrieving symbols... "
     memmap = lib.memmap
     syms = []
     for mem in memmap:
         memstr = str(mem)
-        sym_index = memstr.find('symbol')
+        entry = memstr.split("\"")[1]
         sym = {}
-        if (sym_index > -1):
-            sym['name'] = memstr[sym_index+10:-3]
-            part = memstr[18:].partition(',')
-            sym['begin'] = int(part[0], 16)
-            sym['end'] = int(part[2][1:].partition(')')[0], 16)
+        if entry == "symbol":
+            sym['name'] = memstr.split("\"")[3]
+            sym['begin'] = int(memstr.split("(")[2].split(",")[0], 16)
+            sym['end'] = int(memstr.split("(")[2].split(",")[1][1:-1], 16)
             sym['length'] = int(sym['end'] - sym['begin'] + 1)
+            sym['code'] = ""
+            sym['section'] = 4
             syms.append(sym)
+    print "Done\n"
     return syms
 
+def scan_sections():
+    print "Scanning library sections... "
+    sections = lib.sections.values()
+    sec = sections[4] # .text
+    for sym in symbols:
+        i = 0
+        if sym['begin'] > sec.beg and sym['end'] < sec.end:
+            offset = sym['begin'] - sec.beg
+            sub_data = sec.data[offset : offset + sym['length']]
+            sym['code'] = ':'.join(x.encode('hex') for x in sub_data)
+            sym['section'] = 4
+    print "Done\n"
+
 def find_matches():
+    print "Finding matches... "
     text = stripped.sections['.text']
-    code = ':'.join(x.encode('hex') for x in stripped.sections['.text'].data)
+    code = ':'.join(x.encode('hex') for x in text.data)
     matches = []
-    beg = 0
-    print("The beginning of the text section is %d\n" % text.beg)
-    for func in functions:
-        index = code.find(func['code'], beg)
-        if index > -1:
-            beg = index+1
-            match = {}
-            match['name'] = func['name']
-            match['value'] = hex(text.beg + index/3)
-            match['length'] = func['length']
-            match['binding'] = 69
-            match['visibility'] = 0
-            match['section'] = func['section']
-            matches.append(match)
-            symbol_file.write("<%s, %s, %s>\n" % (match['name'], match['value'], match['length']))
+    for sym in symbols:
+        print sym['name']
+        print sym['code']
+        print "\n"
+        index = code.find(sym['code'])
+        if index > -1 and len(sym['code']) > 0:
+            symbol_file.write("<%s, %s, %s>\n" % (sym['name'], hex(text.beg+index/3), hex(sym['length'])))
+            matches.append(sym)
+    print "Done\n"
     return matches
+
 
 class SubVisitor(Visitor):
     def __init__(self):
@@ -75,9 +69,10 @@ class CallPrinter(Visitor) :
         if 'insn' in jmp.attrs:
             symbol_file.write("<%s>\n" % jmp.attrs['insn'])
 
+
 # initial setup
 
-with  open('test.c', 'w') as fobj:
+with open('test.c', 'w') as fobj:
     fobj.write('''
 int main()
 {
@@ -91,7 +86,7 @@ filename = argv[1]
 #lib = bap.run('lib_test/lib_abcdef')
 lib = bap.run('a.out')
 symbols = get_symbols()
-functions = scan_sections()
+scan_sections()
 stripped = bap.run(filename)
 symbol_file = open("temp", 'w')
 entries = find_matches()
