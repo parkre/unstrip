@@ -49,22 +49,17 @@ def find_matches():
     print("The beginning of the text section is %d\n" % text.beg)
     for func in functions:
         index = code.find(func['code'], beg)
-#        if index < 0:
-#            index = code.find(func['code'])
         if index > -1:
-            print("Index = %d" % index)
             beg = index+1
             match = {}
             match['name'] = func['name']
-            match['value'] = hex(text.beg + index/8)
+            match['value'] = hex(text.beg + index/3)
             match['length'] = func['length']
             match['binding'] = 69
             match['visibility'] = 0
             match['section'] = func['section']
             matches.append(match)
             symbol_file.write("<%s, %s, %s>\n" % (match['name'], match['value'], match['length']))
-#        else:
-#            print("Function %s was not found\n" % func['name'])
     return matches
 
 class SubVisitor(Visitor):
@@ -101,11 +96,10 @@ stripped = bap.run(filename)
 symbol_file = open("temp", 'w')
 entries = find_matches()
 
-subs = SubVisitor()
-subs.run(stripped.program)
+#subs = SubVisitor()
+#subs.run(stripped.program)
 
-symbol_file.write("\n\nSubVisitor\n")
-for address in subs.addresses:
-    symbol_file.write("<%s>\n" % address)
+#for address in subs.addresses:
+#    symbol_file.write("<%s>\n" % address)
 
-CallPrinter().run(stripped.program)
+#CallPrinter().run(stripped.program)
