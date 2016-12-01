@@ -80,12 +80,8 @@ os.system('gcc -static test.c')
 filename = argv[1]
 #lib = bap.run('lib_test/lib_abcdef')
 lib = bap.run('a.out')
-#if os.path.isfile(filename+"cached"):
 symbols = get_symbols()
 scan_sections()
-#else:
-#    symbols = parse_cache()
-
 stripped = bap.run(filename)
 symbol_file = open("temp", 'w')
 entries = find_matches()
