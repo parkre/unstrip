@@ -34,19 +34,18 @@ def scan_sections():
         if sym['begin'] > text.beg and sym['end'] < text.end:
             offset = sym['begin'] - text.beg
             sub_data = text.data[offset : offset + sym['length']]
-            sym['code'] = ''.join(x.encode('hex') for x in sub_data)
+            #sym['code'] = ''.join(x.encode('hex') for x in sub_data)
+            sym['code'] = sub_data
             sym['section'] = 4
     print "Done\n"
 
 def find_matches():
     print "Finding matches... "
     text = stripped.sections['.text']
-    code = ''.join(x.encode('hex') for x in text.data)
+    #code = ''.join(x.encode('hex') for x in text.data)
+    code = text.data
     matches = []
     for sym in symbols:
-        print sym['name']
-        print sym['code']
-        print "\n"
         index = code.find(sym['code'])
         if index > -1 and len(sym['code']) > 0:
             symbol_file.write("<%s, %s, %s>\n" % (sym['name'], hex(text.beg+index), hex(sym['length'])))
