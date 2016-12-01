@@ -3,6 +3,7 @@
 
 import bap
 import inject
+import time
 from bap.adt import Visitor   
 from sys import argv
 import os
@@ -57,7 +58,8 @@ def find_matches():
 
 
 def inject_syms():
-    inject.injectSyms(filename,temp_name,"_"+filename) 
+    with open(temp_name) as fd:
+        inject.injectSyms(filename,temp_name,"_"+filename) 
 
 class SubVisitor(Visitor):
     def __init__(self):
@@ -74,7 +76,7 @@ class CallPrinter(Visitor) :
 
 
 # initial setup
-
+start = time.time()
 with open('test.c', 'w') as fobj:
     fobj.write('''
 int main()
@@ -96,6 +98,8 @@ symbol_file = open(temp_name, 'w')
 entries = find_matches()
 symbol_file.flush()
 inject_syms()
+end = time.time()
+print (end - start) / 60.0
 
 #subs = SubVisitor()
 #subs.run(stripped.program)
