@@ -2,6 +2,7 @@
 #! /usr/local/lib/python2.7       
 
 import bap
+import inject
 from bap.adt import Visitor   
 from sys import argv
 import os
@@ -56,6 +57,9 @@ def find_matches():
     return matches
 
 
+def inject_syms():
+    inject.injectSyms(filename,temp_name,"_"+filename) 
+
 class SubVisitor(Visitor):
     def __init__(self):
         self.addresses = {}
@@ -88,8 +92,11 @@ lib = bap.run('a.out')
 symbols = get_symbols()
 scan_sections()
 stripped = bap.run(filename)
-symbol_file = open("temp", 'w')
+temp_name = "temp"
+symbol_file = open(temp_name, 'w')
 entries = find_matches()
+symbol_file.flush()
+inject_syms()
 
 #subs = SubVisitor()
 #subs.run(stripped.program)
