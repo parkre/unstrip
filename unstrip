@@ -30,19 +30,14 @@ def scan_sections():
     print "Scanning library sections... "
     text = lib.sections['.text']
     for sym in symbols:
-        i = 0
         if sym['begin'] > text.beg and sym['end'] < text.end:
             offset = sym['begin'] - text.beg
-            sub_data = text.data[offset : offset + sym['length']]
-            #sym['code'] = ''.join(x.encode('hex') for x in sub_data)
-            sym['code'] = sub_data
-            sym['section'] = 4
+            sym['code'] = text.data[offset : offset + sym['length']]
     print "Done\n"
 
 def find_matches():
     print "Finding matches... "
     text = stripped.sections['.text']
-    #code = ''.join(x.encode('hex') for x in text.data)
     code = text.data
     matches = []
     for sym in symbols:
