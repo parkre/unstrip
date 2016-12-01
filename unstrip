@@ -93,7 +93,7 @@ entries = find_matches()
 symbol_file.flush()
 inject_syms()
 end = time.time()
-print (end - start) / 60.0
+print "runtime: " + (end - start) / 60.0
 
 #subs = SubVisitor()
 #subs.run(stripped.program)
