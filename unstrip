@@ -51,22 +51,7 @@ def find_matches():
     return matches
 
 
-class SubVisitor(Visitor):
-    def __init__(self):
-        self.addresses = {}
-
-    def enter_Sub(self,sub):
-        self.addresses[sub.id] = sub.attrs['address']
-        #symbol_file.write("<%s, %s, %d>\n" % ())
-
-class CallPrinter(Visitor) :
-    def enter_Call(self,jmp):
-        if 'insn' in jmp.attrs:
-            symbol_file.write("<%s>\n" % jmp.attrs['insn'])
-
-
 # initial setup
-
 with open('test.c', 'w') as fobj:
     fobj.write('''
 int main()
@@ -85,11 +70,3 @@ scan_sections()
 stripped = bap.run(filename)
 symbol_file = open("temp", 'w')
 entries = find_matches()
-
-#subs = SubVisitor()
-#subs.run(stripped.program)
-
-#for address in subs.addresses:
-#    symbol_file.write("<%s>\n" % address)
-
-#CallPrinter().run(stripped.program)
