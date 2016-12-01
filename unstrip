@@ -7,6 +7,7 @@ import time
 from bap.adt import Visitor   
 from sys import argv
 import os
+import os.path
 
 
 def get_symbols():
@@ -23,29 +24,30 @@ def get_symbols():
             sym['end'] = int(memstr.split("(")[2].split(",")[1][1:-1], 16)
             sym['length'] = sym['end'] - sym['begin'] + 1
             sym['code'] = ""
-            sym['section'] = 4
+            sym['section'] = ".text"
             syms.append(sym)
     print "Done\n"
     return syms
 
 def scan_sections():
     print "Scanning library sections... "
-    text = lib.sections['.text']
+    sections = lib.sections.values()
     for sym in symbols:
-        if sym['begin'] > text.beg and sym['end'] < text.end:
-            offset = sym['begin'] - text.beg
-            sym['code'] = text.data[offset : offset + sym['length']]
+	for sec in sections:
+            if sym['begin'] > sec.beg and sym['end'] < sec.end:
+                offset = sym['begin'] - sec.beg
+                sym['code'] = sec.data[offset : offset + sym['length']]
+                sym['section'] = sec.name
     print "Done\n"
 
 def find_matches():
     print "Finding matches... "
-    text = stripped.sections['.text']
-    code = text.data
     matches = []
     for sym in symbols:
-        index = code.find(sym['code'])
+        sec = stripped.sections[sym['section']]
+        index = sec.data.find(sym['code'])    
         if index > -1 and len(sym['code']) > 0:
-            symbol_file.write("<%s, %s, %s>\n" % (sym['name'], hex(text.beg+index), hex(sym['length'])))
+            symbol_file.write("<%s, %s, %s, %s>\n" % (sym['name'], hex(sec.beg+index), hex(sym['length']), sym['section']))
             matches.append(sym)
     print "Done\n"
     return matches
