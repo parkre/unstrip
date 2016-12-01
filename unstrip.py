@@ -53,6 +53,7 @@ def inject_syms():
     with open("syms") as fd:
         inject.injectSyms(filename, "syms", "_"+filename)
 
+
 # run 
 filename = argv[1]
 lib = bap.run('a.out')
@@ -61,3 +62,4 @@ functions = scan_sections()
 stripped = bap.run(filename)
 find_matches()
 inject_syms()
+

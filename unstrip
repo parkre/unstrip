@@ -1,0 +1,100 @@
+#! /usr/bin/env python
+#! /usr/local/lib/python2.7       
+
+import bap
+from bap.adt import Visitor   
+from sys import argv
+import os
+
+
+def get_symbols():
+    print "Retrieving symbols... "
+    memmap = lib.memmap
+    syms = []
+    for mem in memmap:
+        memstr = str(mem)
+        entry = memstr.split("\"")[1]
+        sym = {}
+        if entry == "symbol":
+            sym['name'] = memstr.split("\"")[3]
+            sym['begin'] = int(memstr.split("(")[2].split(",")[0], 16)
+            sym['end'] = int(memstr.split("(")[2].split(",")[1][1:-1], 16)
+            sym['length'] = int(sym['end'] - sym['begin'] + 1)
+            sym['code'] = ""
+            sym['section'] = 4
+            syms.append(sym)
+    print "Done\n"
+    return syms
+
+def scan_sections():
+    print "Scanning library sections... "
+    sections = lib.sections.values()
+    sec = sections[4] # .text
+    for sym in symbols:
+        i = 0
+        if sym['begin'] > sec.beg and sym['end'] < sec.end:
+            offset = sym['begin'] - sec.beg
+            sub_data = sec.data[offset : offset + sym['length']]
+            sym['code'] = ':'.join(x.encode('hex') for x in sub_data)
+            sym['section'] = 4
+    print "Done\n"
+
+def find_matches():
+    print "Finding matches... "
+    text = stripped.sections['.text']
+    code = ':'.join(x.encode('hex') for x in text.data)
+    matches = []
+    for sym in symbols:
+        print sym['name']
+        print sym['code']
+        print "\n"
+        index = code.find(sym['code'])
+        if index > -1 and len(sym['code']) > 0:
+            symbol_file.write("<%s, %s, %s>\n" % (sym['name'], hex(text.beg+index/3), hex(sym['length'])))
+            matches.append(sym)
+    print "Done\n"
+    return matches
+
+
+class SubVisitor(Visitor):
+    def __init__(self):
+        self.addresses = {}
+
+    def enter_Sub(self,sub):
+        self.addresses[sub.id] = sub.attrs['address']
+        #symbol_file.write("<%s, %s, %d>\n" % ())
+
+class CallPrinter(Visitor) :
+    def enter_Call(self,jmp):
+        if 'insn' in jmp.attrs:
+            symbol_file.write("<%s>\n" % jmp.attrs['insn'])
+
+
+# initial setup
+
+with open('test.c', 'w') as fobj:
+    fobj.write('''
+int main()
+{
+    return 0;
+}
+''')
+os.system('gcc -static test.c')
+
+# run 
+filename = argv[1]
+#lib = bap.run('lib_test/lib_abcdef')
+lib = bap.run('a.out')
+symbols = get_symbols()
+scan_sections()
+stripped = bap.run(filename)
+symbol_file = open("temp", 'w')
+entries = find_matches()
+
+#subs = SubVisitor()
+#subs.run(stripped.program)
+
+#for address in subs.addresses:
+#    symbol_file.write("<%s>\n" % address)
+
+#CallPrinter().run(stripped.program)
