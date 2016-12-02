@@ -45,15 +45,26 @@ def find_matches():
         sec = stripped.sections[sym['section']]
         index = sec.data.find(sym['code'])    
         if index > -1:# and len(sym['code']) > 0:
-            symbol_file.write("<%s, %s, %s, %s>\n" % (sym['name'], hex(sec.beg+index), hex(sym['length']), sym['section']))
+            symbol_file.write("<%s, %s, %s, %s, g>\n" % (sym['name'], hex(sec.beg+index), hex(sym['length']), sym['section']))
             matches.append(sym)
     print "Done\n"
     return matches
 
+class SubVisitor(Visitor):
+    def __init__(self):
+        self.addresses = {}
+
+    def enter_Sub(self,sub):
+        self.addresses[sub.id] = sub.attrs['address']
 
 # initial setup
 with open('test.c', 'w') as fobj:
     fobj.write('''
+#include <stdio.h>
+int test() {
+    printf(\"Hello from test!\\n\");
+    return 1;
+}
 int main()
 {
     return 0;
@@ -70,3 +81,15 @@ scan_sections()
 stripped = bap.run(filename)
 symbol_file = open("temp", 'w')
 entries = find_matches()
+
+subs = SubVisitor()
+subs.run(stripped.program)
+
+i = 0
+for address in subs.addresses:
+    addr = str(address)
+    index = addr.find("sub")
+    value = hex(int(addr[index+4:-2], 16))
+    symbol_file.write("<func%s, %s, 0, .text, l>\n" % (i, value))
+    i = i + 1
+
