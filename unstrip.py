@@ -1,6 +1,7 @@
 #! /usr/local/lib/python2.7
 
 import bap
+import inject
 from sys import argv
 
 
@@ -37,15 +38,21 @@ def get_symbols():
             syms.append(sym)
     return syms
 
+# send the found matches to temp file
 def find_matches():
     text = stripped.sections['.text']
     code = ':'.join(x.encode('hex') for x in stripped.sections['.text'].data)
-    print 'Symbol Table'
-    for func in functions:
-        index = code.find(func['code'])
-        if index > -1:
-            print "<%s, %s, %d>" % (func['name'], hex(text.beg + index), func['length'])
-        
+    # open file
+    with open("syms", "w") as fd:
+        for func in functions:
+            index = code.find(func['code'])
+            if index > -1:
+                fd.write("<%s, %s, %d>\n" % (func['name'], hex(text.beg + index/8), func['length']))
+
+def inject_syms():
+    with open("syms") as fd:
+        inject.injectSyms(filename, "syms", "_"+filename)
+
 
 # run 
 filename = argv[1]
@@ -54,3 +61,5 @@ symbols = get_symbols()
 functions = scan_sections()
 stripped = bap.run(filename)
 find_matches()
+inject_syms()
+
