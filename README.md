@@ -1,3 +1,3 @@
 # unstrip
-Symbol table regenerator
+Symbol table regenerator\n
 Senior Capstone Project
