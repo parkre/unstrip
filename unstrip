@@ -63,13 +63,6 @@ class SubVisitor(Visitor):
 
     def enter_Sub(self,sub):
         self.addresses[sub.id] = sub.attrs['address']
-        #symbol_file.write("<%s, %s, %d>\n" % ())
-
-class CallPrinter(Visitor) :
-    def enter_Call(self,jmp):
-        if 'insn' in jmp.attrs:
-            symbol_file.write("<%s>\n" % jmp.attrs['insn'])
-
 
 # initial setup
 start = time.time()
@@ -99,10 +92,19 @@ inject_syms()
 end = time.time()
 print "runtime: " + str((end - start) / 60.0)
 
-#subs = SubVisitor()
-#subs.run(stripped.program)
+subs = SubVisitor()
+subs.run(stripped.program)
 
-#for address in subs.addresses:
-#    symbol_file.write("<%s>\n" % address)
-
-#CallPrinter().run(stripped.program)
+i = 0
+for address in subs.addresses:
+    addr = str(address)
+    index = addr.find("sub")
+    value = hex(int(addr[index+4:-2], 16))
+    contains = False
+    for entry in entries:
+        if entry == value:
+            contains = True
+            break
+    if contains == False:
+        symbol_file.write("<func%s, %s, 0, .text, l>\n" % (i, value))
+        i = i + 1
