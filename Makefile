@@ -1,4 +1,4 @@
-include /home/jacnel/eresi/config.h
+include /home/jake/repos/eresi/config.h
 
 SRC 	= inject.c
 CC 	= gcc

@@ -46,7 +46,7 @@ def find_matches():
     for sym in symbols:
         sec = stripped.sections[sym['section']]
         index = sec.data.find(sym['code'])    
-        if index > -1 and len(sym['code']) > 0:
+        if index > -1: #and len(sym['code']) > 0:
             symbol_file.write("<%s, %s, %s, %s>\n" % (sym['name'], hex(sec.beg+index), hex(sym['length']), sym['section']))
             matches.append(sym)
     print "Done\n"
@@ -75,8 +75,10 @@ class CallPrinter(Visitor) :
 start = time.time()
 with open('test.c', 'w') as fobj:
     fobj.write('''
+#include <stdio.h>
 int main()
 {
+    printf(\"Hello, World!\\n\");
     return 0;
 }
 ''')
@@ -95,7 +97,7 @@ entries = find_matches()
 symbol_file.flush()
 inject_syms()
 end = time.time()
-print "runtime: " + (end - start) / 60.0
+print "runtime: " + str((end - start) / 60.0)
 
 #subs = SubVisitor()
 #subs.run(stripped.program)
