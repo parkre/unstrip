@@ -7,7 +7,6 @@ import time
 from bap.adt import Visitor   
 from sys import argv
 import os
-import os.path
 
 
 def get_symbols():
@@ -24,30 +23,35 @@ def get_symbols():
             sym['end'] = int(memstr.split("(")[2].split(",")[1][1:-1], 16)
             sym['length'] = sym['end'] - sym['begin'] + 1
             sym['code'] = ""
-            sym['section'] = ".text"
+            sym['section'] = 4
             syms.append(sym)
     print "Done\n"
     return syms
 
 def scan_sections():
     print "Scanning library sections... "
-    sections = lib.sections.values()
+    text = lib.sections['.text']
     for sym in symbols:
-	for sec in sections:
-            if sym['begin'] > sec.beg and sym['end'] < sec.end:
-                offset = sym['begin'] - sec.beg
-                sym['code'] = sec.data[offset : offset + sym['length']]
-                sym['section'] = sec.name
+        i = 0
+        if sym['begin'] > text.beg and sym['end'] < text.end:
+            offset = sym['begin'] - text.beg
+            sub_data = text.data[offset : offset + sym['length']]
+            sym['code'] = ''.join(x.encode('hex') for x in sub_data)
+            sym['section'] = 4
     print "Done\n"
 
 def find_matches():
     print "Finding matches... "
+    text = stripped.sections['.text']
+    code = ''.join(x.encode('hex') for x in text.data)
     matches = []
     for sym in symbols:
-        sec = stripped.sections[sym['section']]
-        index = sec.data.find(sym['code'])    
-        if index > -1: #and len(sym['code']) > 0:
-            symbol_file.write("<%s, %s, %s, %s>\n" % (sym['name'], hex(sec.beg+index), hex(sym['length']), sym['section']))
+        print sym['name']
+        print sym['code']
+        print "\n"
+        index = code.find(sym['code'])
+        if index > -1 and len(sym['code']) > 0:
+            symbol_file.write("<%s, %s, %s>\n" % (sym['name'], hex(text.beg+index), hex(sym['length'])))
             matches.append(sym)
     print "Done\n"
     return matches
@@ -63,15 +67,20 @@ class SubVisitor(Visitor):
 
     def enter_Sub(self,sub):
         self.addresses[sub.id] = sub.attrs['address']
+        #symbol_file.write("<%s, %s, %d>\n" % ())
+
+class CallPrinter(Visitor) :
+    def enter_Call(self,jmp):
+        if 'insn' in jmp.attrs:
+            symbol_file.write("<%s>\n" % jmp.attrs['insn'])
+
 
 # initial setup
 start = time.time()
 with open('test.c', 'w') as fobj:
     fobj.write('''
-#include <stdio.h>
 int main()
 {
-    printf(\"Hello, World!\\n\");
     return 0;
 }
 ''')
@@ -90,21 +99,12 @@ entries = find_matches()
 symbol_file.flush()
 inject_syms()
 end = time.time()
-print "runtime: " + str((end - start) / 60.0)
+print (end - start) / 60.0
 
-subs = SubVisitor()
-subs.run(stripped.program)
+#subs = SubVisitor()
+#subs.run(stripped.program)
 
-i = 0
-for address in subs.addresses:
-    addr = str(address)
-    index = addr.find("sub")
-    value = hex(int(addr[index+4:-2], 16))
-    contains = False
-    for entry in entries:
-        if entry == value:
-            contains = True
-            break
-    if contains == False:
-        symbol_file.write("<func%s, %s, 0, .text, l>\n" % (i, value))
-        i = i + 1
+#for address in subs.addresses:
+#    symbol_file.write("<%s>\n" % address)
+
+#CallPrinter().run(stripped.program)
