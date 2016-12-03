@@ -12,7 +12,7 @@ NAME 	= inject
 
 all: $(OBJ64)
 	$(CC) $(OBJ64) -o $(NAME) $(LDFLAGS64)
-	$(CC) $(VULN) -o hijackme
+	$(CC) $(VULN) -static -o hijackme
 
 fclean: clean
 	$(RM) $(NAME) hijackme* 

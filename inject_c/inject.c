@@ -3,6 +3,8 @@
 #define BUF_SIZE 1024
 #define ARR_SIZE 4098
 
+int get_sect_index(char *);
+
 int main(int argc, char **argv) {
   elfshobj_t *in_file;
   FILE *syms_file;
@@ -15,6 +17,7 @@ int main(int argc, char **argv) {
   int tot_syms = 0;
   long int *addr = (long int*) malloc(ARR_SIZE * sizeof(long int));
   long int *size = (long int*) malloc(ARR_SIZE * sizeof(long int));
+  int *section = (int *) malloc(ARR_SIZE * sizeof(int));
 
   if(argc < 4) {
     printf("Usage: inject <input_file> <symbols_file> <output_file>\n");
@@ -72,8 +75,11 @@ int main(int argc, char **argv) {
 
     /* get symbol size */
     tok = strtok(NULL, ",");
-    size[tot_syms++] = strtol(tok, NULL, 10);
+    size[tot_syms] = strtol(tok, NULL, 0);
     //printf("%li\n", size[tot_syms - 1]);
+   
+    tok = strtok(NULL, ",");
+    section[tot_syms++] = get_sect_index(tok);
   }
 
   //printf("---------------------------------------------------------");
@@ -85,7 +91,7 @@ int main(int argc, char **argv) {
   printf("injecting symbols...\n");
   /* get the symbol information */
   for(i = 0; i < tot_syms; i++) {    
-    sym = elfsh_create_symbol(addr[i], size[i], STT_FUNC, 0, 0, 0);
+    sym = elfsh_create_symbol(addr[i], size[i], STT_FUNC, 1, 0, section[i]);
     ret = elfsh_insert_symbol(in_file->secthash[ELFSH_SECTION_SYMTAB], &sym, name[i]);
     if(ret < 0) {
       elfsh_error();
@@ -100,4 +106,18 @@ int main(int argc, char **argv) {
 
   printf("Relinking *%s* \n", ret ? "Error" : "OK");
   return 0;
+}
+
+int get_sect_index(char * sect_name) {
+    if(!(strcmp(sect_name, " .text"))) {
+        return 6;
+    }
+    else if(!strcmp(sect_name, " __libc_freeres_fn")) {
+        return 7;
+    }
+    else if(!strcmp(sect_name, " .fini")) {
+        return 9;
+    }
+    else
+        return 0;
 }

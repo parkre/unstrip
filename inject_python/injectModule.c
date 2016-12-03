@@ -4,18 +4,18 @@
 #define BUF_SIZE 1024
 #define ARR_SIZE 4098
 
-//static PyObject* injectError;
+int get_sect_index(char *);
 
 int CinjectSyms(char *in, char *syms, char *out_file) {
   elfshobj_t *in_file;
   FILE *syms_file;
   int ret;
   elfsh_Sym sym;
-  char **name = (char**) malloc(ARR_SIZE * sizeof(char*));
-
   int tot_syms = 0;
+  char **name = (char**) malloc(ARR_SIZE * sizeof(char*));
   long int *addr = (long int*) malloc(ARR_SIZE * sizeof(long int));
   long int *size = (long int*) malloc(ARR_SIZE * sizeof(long int));
+  long int *section = (long int*) malloc(ARR_SIZE * sizeof(long int));
 
   /* get input file from command line arguments */
   in_file = elfsh_map_obj(in);
@@ -65,8 +65,12 @@ int CinjectSyms(char *in, char *syms, char *out_file) {
 
     /* get symbol size */
     tok = strtok(NULL, ",");
-    size[tot_syms++] = strtol(tok, NULL, 10);
+    size[tot_syms] = strtol(tok, NULL, 0);
     //printf("%li\n", size[tot_syms - 1]);
+
+    /* get section */
+    tok = strtok(NULL, ",");
+    section[tot_syms++] = get_sect_index(tok);
   }
 
   //printf("---------------------------------------------------------");
@@ -78,7 +82,7 @@ int CinjectSyms(char *in, char *syms, char *out_file) {
   printf("injecting symbols...\n");
   /* get the symbol information */
   for(i = 0; i < tot_syms; i++) {
-    sym = elfsh_create_symbol(addr[i], size[i], STT_FUNC, 1, 0, 6);
+    sym = elfsh_create_symbol(addr[i], size[i], STT_FUNC, 1, 0, section[i]);
     ret = elfsh_insert_symbol(in_file->secthash[ELFSH_SECTION_SYMTAB], &sym, name[i]);
     if(ret < 0) {
       elfsh_error();
@@ -95,6 +99,20 @@ int CinjectSyms(char *in, char *syms, char *out_file) {
   return tot_syms;
 }
 
+/* this function returns the correct index for the injection process */
+int get_sect_index(char * sect_name) {
+    if(!strcmp(sect_name, " .text")) {
+	return 6;
+    }
+    else if(!strcmp(sect_name, " __libc_freeres_fn")) {
+	return 7;
+    }
+    else if(!strcmp(sect_name, " .fini")) {
+	return 9;
+    }
+    else
+	return 0;
+}
 
 /*
  * injectSyms() : a python wrapper function for CinjectSyms
