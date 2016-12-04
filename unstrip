@@ -44,18 +44,25 @@ def find_matches():
     print "Finding matches... "
     matches = []
     for sym in symbols:
-        sec = stripped.sections[sym['section']]
-        index = sec.data.find(sym['code'])    
-        if index > -1: #and len(sym['code']) > 0:
-            symbol_file.write("<%s, %s, %s, %s>\n" % (sym['name'], hex(sec.beg+index), hex(sym['length']), sym['section']))
-            matches.append(sym)
+        try:
+            sec = stripped.sections[sym['section']]
+            index = sec.data.find(sym['code'])    
+            if index > -1: 
+                symbol_file.write("<%s, %s, %s, %s, g>\n" % (sym['name'], hex(sec.beg+index), hex(sym['length']), sym['section']))
+                matches.append(hex(sec.beg+index))
+        except:
+            pass
     print "Done\n"
     return matches
 
-
-def inject_syms():
-    with open(temp_name) as fd:
-        inject.injectSyms(filename,temp_name,"_"+filename) 
+def check_stripped():
+    memmap = stripped.memmap
+    for mem in memmap:
+        memstr = str(mem)
+        entry = memstr.split("\"")[1]
+        if entry == "symbol":
+            print "%s is not stripped!\n" % filename
+            exit()
 
 class SubVisitor(Visitor):
     def __init__(self):
@@ -79,18 +86,20 @@ os.system('gcc -static test.c')
 
 # run 
 filename = argv[1]
+#size = os.stat(filename).st_size
+#if size < 10000:
+#    print "Sorry, %s is dynamically-linked.\n" % filename
+#    exit()
+
 #lib = bap.run('lib_test/lib_abcdef')
 lib = bap.run('a.out')
 symbols = get_symbols()
 scan_sections()
 stripped = bap.run(filename)
+check_stripped()
 temp_name = "temp"
 symbol_file = open(temp_name, 'w')
 entries = find_matches()
-symbol_file.flush()
-inject_syms()
-end = time.time()
-print "runtime: " + str((end - start) / 60.0)
 
 subs = SubVisitor()
 subs.run(stripped.program)
@@ -108,3 +117,14 @@ for address in subs.addresses:
     if contains == False:
         symbol_file.write("<func%s, %s, 0, .text, l>\n" % (i, value))
         i = i + 1
+
+symbol_file.flush()
+inject.injectSyms(filename,temp_name,"unstripped_"+filename) 
+
+# delete temporary files (a.out, temp and test.c)
+os.remove('a.out')
+os.remove('test.c')
+os.remove('temp')
+
+end = time.time()
+print "runtime: " + str((end - start) / 60.0)

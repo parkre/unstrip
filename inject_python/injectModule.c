@@ -2,9 +2,10 @@
 #include "libelfsh.h"
 
 #define BUF_SIZE 1024
-#define ARR_SIZE 4098
 
+int ARR_SIZE = 4098;
 int get_sect_index(char *);
+int get_binding(char);
 
 int CinjectSyms(char *in, char *syms, char *out_file) {
   elfshobj_t *in_file;
@@ -15,7 +16,8 @@ int CinjectSyms(char *in, char *syms, char *out_file) {
   char **name = (char**) malloc(ARR_SIZE * sizeof(char*));
   long int *addr = (long int*) malloc(ARR_SIZE * sizeof(long int));
   long int *size = (long int*) malloc(ARR_SIZE * sizeof(long int));
-  long int *section = (long int*) malloc(ARR_SIZE * sizeof(long int));
+  int *section = (int *) malloc(ARR_SIZE * sizeof(int));
+  int *binding = (int *) malloc(ARR_SIZE * sizeof(int));
 
   /* get input file from command line arguments */
   in_file = elfsh_map_obj(in);
@@ -41,36 +43,48 @@ int CinjectSyms(char *in, char *syms, char *out_file) {
   size_t read;
   /* loop assumes correct input <name, 0x0000addr, size> */
   while((read = getline(&line, &read, syms_file)) != -1) {
-    //printf("%d\n", (int)read);
-    //printf("%s\n", line);
-    strcpy(temp, line);
-    temp_indx = 0;
-    while(temp[temp_indx + 1]) {
-      temp[temp_indx] = temp[temp_indx + 1];
-      temp_indx++;
-    }
-    temp[strlen(temp) - 3] = '\0';
-    //printf("%s\n", temp);
+      // if arrays are going to be overrun, double lengths
+      if(tot_syms >= ARR_SIZE) {
+	  printf("growing...\n");
+	  ARR_SIZE *= 2;
+	  name = (char **) realloc(name, ARR_SIZE * sizeof(char*));
+	  addr = (long int *) realloc(addr, ARR_SIZE * sizeof(long int));
+	  size = (long  int *) realloc(size, ARR_SIZE * sizeof(long int));
+	  section = (int *) realloc(section, ARR_SIZE * sizeof(int));
+	  binding = (int *) realloc(binding, ARR_SIZE * sizeof(int));
+      }
 
-    /* get symbol name */
-    tok = strtok(temp, ",");
-    //printf("%s\n", tok);
-    name[tot_syms] = (char*) malloc(strlen(tok) + 1);
-    strcpy(name[tot_syms],tok);
+      /* prep line */
+      strcpy(temp, line);
+      temp_indx = 0;
+      while(temp[temp_indx + 1]) {
+	  temp[temp_indx] = temp[temp_indx + 1];
+	  temp_indx++;
+      }
+      temp[strlen(temp) - 3] = '\0';
 
-    /* get symbol address */
-    tok = strtok(NULL, ",");
-    addr[tot_syms] = strtol(tok, NULL, 0);
-    //printf("%li\n", addr[tot_syms]);
-
-    /* get symbol size */
-    tok = strtok(NULL, ",");
-    size[tot_syms] = strtol(tok, NULL, 0);
-    //printf("%li\n", size[tot_syms - 1]);
-
-    /* get section */
-    tok = strtok(NULL, ",");
-    section[tot_syms++] = get_sect_index(tok);
+      /* get symbol name */
+      tok = strtok(temp, ",");
+      name[tot_syms] = (char*) malloc(strlen(tok) + 1);
+      strcpy(name[tot_syms],tok);
+      
+      /* get symbol address */
+      tok = strtok(NULL, ",");
+      addr[tot_syms] = strtol(tok, NULL, 0);
+      //printf("%li\n", addr[tot_syms]);
+      
+      /* get symbol size */
+      tok = strtok(NULL, ",");
+      size[tot_syms] = strtol(tok, NULL, 0);
+      //printf("%li\n", size[tot_syms - 1]);
+      
+      /* get section */
+      tok = strtok(NULL, ",");
+      section[tot_syms] = get_sect_index(tok);
+   
+      /* get binding */
+      tok = strtok(NULL, ",");
+      binding[tot_syms++] = get_binding(tok[1]);
   }
 
   //printf("---------------------------------------------------------");
@@ -82,7 +96,7 @@ int CinjectSyms(char *in, char *syms, char *out_file) {
   printf("injecting symbols...\n");
   /* get the symbol information */
   for(i = 0; i < tot_syms; i++) {
-    sym = elfsh_create_symbol(addr[i], size[i], STT_FUNC, 1, 0, section[i]);
+    sym = elfsh_create_symbol(addr[i], size[i], STT_FUNC, binding[i], 0, section[i]);
     ret = elfsh_insert_symbol(in_file->secthash[ELFSH_SECTION_SYMTAB], &sym, name[i]);
     if(ret < 0) {
       elfsh_error();
@@ -107,11 +121,26 @@ int get_sect_index(char * sect_name) {
     else if(!strcmp(sect_name, " __libc_freeres_fn")) {
 	return 7;
     }
+    else if(!strcmp(sect_name, " __libc_thread_freeres_fn")) {
+    	return 8;
+    }
     else if(!strcmp(sect_name, " .fini")) {
 	return 9;
     }
     else
 	return 0;
+}
+
+int get_binding(char c) {
+    if(c == 'l') {
+	return 0;
+    }
+    else if(c == 'g') {
+	return 1;
+    }
+    else {
+	return 3;
+    }
 }
 
 /*
